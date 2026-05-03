@@ -6,23 +6,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Normalize, ToTensor
 import train
 from opacus import PrivacyEngine
-
-
-
-# Em DP o ruído  escala com 1/batch_size.
-
-# accuracy = 0.9589
-
-
-NUM_PARTITIONS = 100
-NUM_SERVER_ROUNDS = 10
-
-TARGET_DELTA = 1e-5 # probabilidade de falha da garantia de privacidade.
-MAX_GRAD_NORM = 1.0 #Limiar de clipping C — cada gradiente por amostra é clipado para ter norma L2 ≤ C
-NOISE_MULTIPLIER = 1.1  # ruído gaussiano
-BATCH_SIZE = 2048
-EPOCHS = 40
-
+import parameters_centralized
 
 def load_dataset_centralized(dataset, batch_size):
     pytorch_transforms = Compose([ToTensor(), Normalize((0.1307,), (0.3081,))])
@@ -52,8 +36,8 @@ def run_centralized_dp(trainloader, testloader, num_classes, epochs:int, lr:floa
                                                       module=model,
                                                       optimizer=optim,
                                                       data_loader=trainloader,
-                                                      noise_multiplier=NOISE_MULTIPLIER,
-                                                      max_grad_norm=MAX_GRAD_NORM,
+                                                      noise_multiplier=parameters_centralized.NOISE_MULTIPLIER,
+                                                      max_grad_norm=parameters_centralized.MAX_GRAD_NORM,
                                                       )
 
     model.to(device)
@@ -68,7 +52,7 @@ def run_centralized_dp(trainloader, testloader, num_classes, epochs:int, lr:floa
             trainloader,
             privacy_engine,
             optim,
-            TARGET_DELTA,
+            parameters_centralized.TARGET_DELTA,
             device=device,
         )
         print(f"  ε = {epsilon:.2f}")
@@ -83,5 +67,5 @@ def run_centralized_dp(trainloader, testloader, num_classes, epochs:int, lr:floa
 
 
 my_dataset = load_dataset("ylecun/mnist")
-trainloader, testloader = load_dataset_centralized(my_dataset, batch_size=BATCH_SIZE)
-run_centralized_dp(trainloader, testloader, 10, epochs=EPOCHS, lr=0.1)
+trainloader, testloader = load_dataset_centralized(my_dataset, batch_size=parameters_centralized.BATCH_SIZE)
+run_centralized_dp(trainloader, testloader, 10, epochs=parameters_centralized.EPOCHS, lr=parameters_centralized.LR)

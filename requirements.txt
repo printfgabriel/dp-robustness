@@ -6,3 +6,4 @@ torchvision
 huggingface_hub 
 httpx
 opacus
+numpy

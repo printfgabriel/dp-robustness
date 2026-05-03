@@ -8,13 +8,15 @@ from flwr.common import Context
 warnings.filterwarnings("ignore", category=UserWarning)
 
 import train
+import parameters_federated
 
 
-NUM_PARTITIONS = 100
+# NUM_PARTITIONS = 100
 
-TARGET_DELTA = 1e-5 # probabilidade de falha da garantia de privacidade.
-MAX_GRAD_NORM = 1.0 #Limiar de clipping C — cada gradiente por amostra é clipado para ter norma L2 ≤ C
-NOISE_MULTIPLIER = 1.1  # ruído gaussiano
+# TARGET_DELTA = 1e-5 # probabilidade de falha da garantia de privacidade.
+# MAX_GRAD_NORM = 1.0 #Limiar de clipping C — cada gradiente por amostra é clipado para ter norma L2 ≤ C
+# NOISE_MULTIPLIER = 1.1  # ruído gaussiano
+# NUM_CLASSES = 10
 
 class FlowerClient(NumPyClient):
     def __init__(
@@ -26,7 +28,7 @@ class FlowerClient(NumPyClient):
         max_grad_norm,
     ) -> None:
         super().__init__()
-        self.model = train.Net()
+        self.model = train.Net(parameters_federated.NUM_CLASSES)
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.target_delta = target_delta
@@ -39,7 +41,7 @@ class FlowerClient(NumPyClient):
         model = self.model
         train.set_weights(model, parameters)
 
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        optimizer = torch.optim.SGD(model.parameters(), lr=parameters_federated.LR, momentum=parameters_federated.MOMENTUM)
 
         privacy_engine = PrivacyEngine(secure_mode=False)
         (model, optimizer, self.train_loader) = privacy_engine.make_private(
@@ -57,6 +59,7 @@ class FlowerClient(NumPyClient):
             optimizer,
             self.target_delta,
             device=self.device,
+            epochs=parameters_federated.EPOCHS,
         )
 
         if epsilon is not None:
@@ -74,17 +77,17 @@ class FlowerClient(NumPyClient):
 
 def client_fn(context: Context):
     partition_id = context.node_config["partition-id"]
-    noise_multiplier = 1.0 if partition_id % 2 == 0 else 1.5
+    # noise_multiplier = 1.0 if partition_id % 2 == 0 else 1.5
 
     train_loader, test_loader = train.load_data(
-        partition_id=partition_id, num_partitions=NUM_PARTITIONS
+        partition_id=partition_id, num_partitions=parameters_federated.NUM_PARTITIONS
     )
     return FlowerClient(
         train_loader,
         test_loader,
-        TARGET_DELTA,
-        noise_multiplier,
-        MAX_GRAD_NORM,
+        parameters_federated.TARGET_DELTA,
+        parameters_federated.NOISE_MULTIPLIER,
+        parameters_federated.MAX_GRAD_NORM,
     ).to_client()
 
 

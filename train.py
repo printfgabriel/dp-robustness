@@ -11,8 +11,9 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Normalize, ToTensor
 from tqdm import tqdm
 
-fds = None  
+import parameters_federated
 
+fds = None  
 
 
 class Net(nn.Module):
@@ -49,7 +50,7 @@ def set_weights(net, parameters):
 def load_data(partition_id: int, num_partitions: int):
     global fds
     if fds is None:
-        partitioner = IidPartitioner(num_partitions=num_partitions)
+        partitioner = IidPartitioner(num_partitions=num_partitions)  # Particiona em IID
         fds = FederatedDataset(
             dataset="ylecun/mnist",
             partitioners={"train": partitioner},
@@ -58,7 +59,8 @@ def load_data(partition_id: int, num_partitions: int):
     partition = fds.load_partition(partition_id)
     # Divide data on each node: 80% train, 20% test
     partition_train_test = partition.train_test_split(test_size=0.2, seed=42)
-    pytorch_transforms = Compose([ToTensor(), Normalize((0.5,), (0.5,))])
+
+    pytorch_transforms = Compose([ToTensor(), Normalize((parameters_federated.MEAN,), (parameters_federated.STD,))])
 
     def apply_transforms(batch):
         """Apply transforms to the partition from FederatedDataset."""
@@ -67,9 +69,9 @@ def load_data(partition_id: int, num_partitions: int):
 
     partition_train_test = partition_train_test.with_transform(apply_transforms)
     train_loader = DataLoader(
-        partition_train_test["train"], batch_size=32, shuffle=True
+        partition_train_test["train"], batch_size=parameters_federated.BATCH_SIZE, shuffle=True
     )
-    test_loader = DataLoader(partition_train_test["test"], batch_size=32)
+    test_loader = DataLoader(partition_train_test["test"], batch_size=parameters_federated.BATCH_SIZE)
     return train_loader, test_loader
 
 # load_data(0, 100)
