@@ -10,10 +10,20 @@ NUM_SERVER_ROUNDS = 10
 TARGET_DELTA = 1e-5
 MAX_GRAD_NORM = 2.0
 
+client_resources = {
+    "num_cpus": 2, 
+    "num_gpus": 0.0, # Se estiver usando CPU
+}
+
 server_app = ServerApp(server_fn=server_fn)
 client_app = ClientApp(client_fn=client_fn)
 
+import ray
+# ray.init(local_mode=True)
 
 hist = run_simulation(
-    server_app=server_app, client_app=client_app, num_supernodes=NUM_PARTITIONS
+    server_app=server_app, 
+    client_app=client_app, 
+    num_supernodes=NUM_PARTITIONS,
+    backend_config={"client_resources": client_resources}
 )

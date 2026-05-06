@@ -1,6 +1,8 @@
 import warnings
 import torch
 from opacus import PrivacyEngine
+from opacus.validators import ModuleValidator
+
 import logging
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
@@ -29,6 +31,16 @@ class FlowerClient(NumPyClient):
     ) -> None:
         super().__init__()
         self.model = train.Net(parameters_federated.NUM_CLASSES)
+
+        # errors = ModuleValidator.validate(self.model, strict=False)
+
+        # if errors:
+        #     print(f"Encontrados {len(errors)} problemas de compatibilidade")
+        #     self.model = ModuleValidator.fix(self.model)
+        #     print("Modelo corrigido automaticamente pelo Opacus")
+        # else:
+        #     print("Modelo compatível com Opacus")
+
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.target_delta = target_delta
@@ -39,9 +51,10 @@ class FlowerClient(NumPyClient):
 
     def fit(self, parameters, config):
         model = self.model
+        model.to(self.device)
         train.set_weights(model, parameters)
 
-        optimizer = torch.optim.SGD(model.parameters(), lr=parameters_federated.LR, momentum=parameters_federated.MOMENTUM)
+        optimizer = torch.optim.Adam(model.parameters(), lr=parameters_federated.LR)
 
         privacy_engine = PrivacyEngine(secure_mode=False)
         (model, optimizer, self.train_loader) = privacy_engine.make_private(
@@ -50,6 +63,7 @@ class FlowerClient(NumPyClient):
                                                       data_loader=self.train_loader,
                                                       noise_multiplier=self.noise_multiplier,
                                                       max_grad_norm=self.max_grad_norm,
+                                                      grad_sample_mode="ew"
                                                       )
 
         epsilon = train.train(
@@ -82,6 +96,7 @@ def client_fn(context: Context):
     train_loader, test_loader = train.load_data(
         partition_id=partition_id, num_partitions=parameters_federated.NUM_PARTITIONS
     )
+
     return FlowerClient(
         train_loader,
         test_loader,

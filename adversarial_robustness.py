@@ -1,7 +1,68 @@
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms
+import torchvision.transforms as T
+from flwr_datasets import FederatedDataset
+
+from PIL import Image
+
+import numpy as np
+import train
+import parameters_federated
+
 
 NOISE = [0.01, 0.05, 0.1, 0.25]
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+# Transformar o Dataset do flower em tupla do Pytorch
+class TupleDataset(Dataset):
+    def __init__(self, ds, transform):
+        self.ds = ds
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, i):
+        img = self.transform(self.ds[i]["image"])
+        return img, self.ds[i]["label"]
+
+
+# Carrega o Dataset
+def get_test_dataset():
+    fds = FederatedDataset(dataset="ylecun/mnist", partitioners={})
+    split = fds.load_split("test")
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (parameters_federated.MEAN,),
+            (parameters_federated.STD,)
+        )
+    ])
+
+    return TupleDataset(split, transform)
+
+
+
+# CARREGAR MODELO SALVO EM ARQUIVO
+def load_model(num_classes, path="./modelos/modelo_final_FL_DP.npy",device='cpu'):
+    model = train.Net(num_classes)
+    params = list(np.load(path, allow_pickle=True))
+
+    state_dict = model.state_dict()
+    for i,key in enumerate(state_dict.keys()):
+        state_dict[key] = torch.from_numpy(params[i]).to(device)
+
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    print("Modelo Carregado!\n")
+    return model
+    
+
 
 
 @torch.no_grad()
@@ -70,21 +131,18 @@ def noise_robustness(
     return summary, results
 
 
+model = load_model(
+    num_classes=parameters_federated.NUM_CLASSES, 
+    path="./modelos/modelo_final_FL_DP.npy", 
+    device=device
+)
 
+test_dataset = get_test_dataset()
 
+summary, results = noise_robustness(
+    model=model,
+    dataset=test_dataset,
+    device=device
+)
 
-
-
-
-# CARREGAR MODELO
-import numpy as np
-
-params = list(np.load("./modelo/modelo_final_FL_DP.npy", allow_pickle=True))
-
-# Quantas camadas carregou
-print(f"Número de camadas: {len(params)}")
-
-# Shape e stats de cada camada
-for i, layer in enumerate(params):
-    print(f"  Camada {i}: shape={layer.shape}, dtype={layer.dtype}, "
-          f"min={layer.min():.4f}, max={layer.max():.4f}, mean={layer.mean():.4f}")
+print("Resultados:", summary)

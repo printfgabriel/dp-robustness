@@ -32,10 +32,9 @@ def get_evaluate_fn():
         if server_round == parameters_federated.NUM_SERVER_ROUNDS:
             print(f"\n[Servidor] Salvando modelo da última rodada ({server_round})...")
             
-            save_path = Path("./modelo/modelo_final_FL_DP.npy")
+            save_path = Path("./modelos/modelo_final_FL_DP.npy")
             save_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Converte para array de objetos para preservar shapes heterogêneos
             params_array = np.empty(len(parameters), dtype=object)
             for i, arr in enumerate(parameters):
                 params_array[i] = arr
