@@ -6,7 +6,10 @@ MAX_GRAD_NORM = 1.2  #Limiar de clipping C — cada gradiente por amostra é cli
 NOISE_MULTIPLIER = 0.8  # ruído gaussiano
 BATCH_SIZE = 256
 EPOCHS = 3
+
+
 FRACTION_FIT=0.3
+FRACTION_EVALUATE = 0.1
 
 
 LR = 0.001

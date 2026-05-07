@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 from flwr.common import Context, Metrics, ndarrays_to_parameters, NDArrays, Parameters
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
-from flwr.server.strategy import FedAvg
+from flwr.server.strategy import FedAvg, FedProx
 from flwr.common import parameters_to_ndarrays
 
 import numpy as np
@@ -51,12 +51,13 @@ def server_fn(context: Context) -> ServerAppComponents:
     ndarrays = train.get_weights(train.Net(parameters_federated.NUM_CLASSES))
     parameters = ndarrays_to_parameters(ndarrays)
 
-    strategy = FedAvg(
+    strategy = FedProx( #FedAvg
+        proximal_mu=0.1,
         fraction_fit=parameters_federated.FRACTION_FIT,
-        fraction_evaluate=0.1,
+        fraction_evaluate=parameters_federated.FRACTION_EVALUATE,
         evaluate_metrics_aggregation_fn=weighted_average,
         initial_parameters=parameters,
-        evaluate_fn=get_evaluate_fn()
+        evaluate_fn=get_evaluate_fn(), 
     )
     config = ServerConfig(num_rounds=num_rounds)
 

@@ -10,7 +10,7 @@ from torchvision.transforms import Compose, Normalize, ToTensor
 from  torchvision.models import resnet18        
 
 from flwr_datasets import FederatedDataset
-from flwr_datasets.partitioner import IidPartitioner
+from flwr_datasets.partitioner import IidPartitioner, PathologicalPartitioner
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 from opacus.validators import ModuleValidator
 
@@ -89,7 +89,12 @@ def set_weights(net, parameters):
 def load_data(partition_id: int, num_partitions: int):
     global fds
     if fds is None:
-        partitioner = IidPartitioner(num_partitions=num_partitions)  # Particiona em IID
+        # partitioner = IidPartitioner(num_partitions=num_partitions)  # Particiona em IID
+        partitioner = PathologicalPartitioner(
+            num_partitions=num_partitions,
+            num_classes_per_partition=4,  # CLASSES POR NÓ. BEM HETEROGENEO
+            partition_by="label",
+        )
         fds = FederatedDataset(
             dataset="ylecun/mnist",
             partitioners={"train": partitioner},
